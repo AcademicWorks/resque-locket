@@ -1,1 +1,1 @@
-require "#{File.dirname(__FILE__)}/resque/locket"
+require "#{File.dirname(__FILE__)}/resque/plugins/locket"

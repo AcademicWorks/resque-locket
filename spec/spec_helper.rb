@@ -1,6 +1,7 @@
 require "rubygems"
 require "bundler/setup"
 
+require "resque"
 require "resque-locket"
 
 RSpec.configure do |config|
