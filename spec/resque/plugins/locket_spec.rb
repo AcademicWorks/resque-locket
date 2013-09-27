@@ -2,11 +2,12 @@ require "spec_helper.rb"
 
 describe Resque::Plugins::Locket do
 
-  before(:each) {
+  after(:each) {
     Resque.redis.flushdb
     Resque.instance_variable_set :@locket_enabled,      nil
     Resque.instance_variable_set :@locketed_queues,     nil
     Resque.instance_variable_set :@job_lock_duration,   nil
+    Resque.instance_variable_set :@job_lock_proc,       nil
     Resque.instance_variable_set :@heartbeat_frequency, nil
     Resque.after_fork = nil
   }
@@ -73,6 +74,16 @@ describe Resque::Plugins::Locket do
       it "validates a job lock expiration is set" do
         expect { Resque.job_lock_duration = 0 }.to raise_exception
         expect { Resque.job_lock_duration = 4.3 }.to raise_exception
+      end
+    end
+
+    context "#job_lock_key" do
+      it "takes a proc that will be evaluated to determine the job lock key" do
+        Resque.job_lock_key = Proc.new { |job| job.payload_class_name }
+
+        my_job = Resque::Job.new(:jobs, "class" => "GoodJob", "args" => "stuffs")
+
+        Resque.send(:job_lock_key, my_job).should eq "GoodJob"
       end
     end
 

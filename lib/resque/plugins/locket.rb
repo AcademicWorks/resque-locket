@@ -77,6 +77,10 @@ module Resque
         super(queue)
       end
 
+      def job_lock_key=(job_lock_proc)
+        @job_lock_proc = job_lock_proc
+      end
+
     private
 
       def queue_unreservable?(queue)
@@ -167,7 +171,11 @@ module Resque
       end
 
       def job_lock_key(job)
-        "locket:job_locks:#{job.payload.to_s}"
+        if @job_lock_proc
+          @job_lock_proc.call(job)
+        else
+          "locket:job_locks:#{job.payload.to_s}"
+        end
       end
 
     end
