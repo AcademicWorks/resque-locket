@@ -114,12 +114,21 @@ module Resque
       # Requeue the locked job and increment our lock counter.
 
       def requeue_job(job)
+        attach_before_perform_exception(job)
         Resque.enqueue(job.payload_class, job.args)
         increment_queue_lock(job)
       end
 
       def increment_queue_lock(job)
         redis.hincrby "locket:queue_lock_counters", job.queue, 1
+      end
+
+      def attach_before_perform_exception(job)
+        job.payload_class.singleton_class.class_eval do
+          define_method(:before_perform_raise_exception) do |*args|
+            raise Resque::Job::DontPerform
+          end
+        end
       end
 
       # WHEN A JOB IS NOT LOCKED ----------------------------------------------------------------------------
@@ -148,6 +157,7 @@ module Resque
         lock_key = job_lock_key(job)
 
         job.payload_class.singleton_class.class_eval do
+          # TODO : should we use around_perform with begin/ensure/end so we expire this on failure?
           define_method(:after_perform_remove_lock) do |*args|
             Resque.redis.del(lock_key)
           end

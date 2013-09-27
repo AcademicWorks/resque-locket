@@ -216,7 +216,7 @@ describe Resque::Plugins::Locket do
           class GoodJob
             @queue = "1" # TODO : hate that i have this hard-coded
 
-            def self.perform(*args); raise "Shouldn't happen"; end
+            def self.perform(*args); end
           end
         }
 
@@ -275,6 +275,12 @@ describe Resque::Plugins::Locket do
         context "with a locked job" do
 
           before(:each){ Resque.stub(:obtain_job_lock) { false }}
+
+          it "doesn't actually run the job" do
+            worker.run_hook :after_fork, job
+
+            job.perform.should be_false
+          end
 
           it "requeues a job if it cannot obtain a look for it" do
             Resque.should_receive(:enqueue).with(job.payload_class, job.args).and_call_original
