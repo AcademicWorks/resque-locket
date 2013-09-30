@@ -2,14 +2,10 @@ require "spec_helper.rb"
 
 describe Resque::Plugins::Locket::Worker do
 
-  let(:all_queues) { %w(1 2 3 4 5) }
+  let(:all_queues) { %w(1 2) }
 
   before(:all) { class GoodJob; def self.perform; end; end }
-
-  before(:each){
-    all_queues.map { |queue| Resque.watch_queue(queue) }
-  }
-
+  before(:each){ all_queues.map { |queue| Resque.watch_queue(queue) }}
   after(:each) {
     Resque.redis.flushdb
     Resque.instance_variable_set :@locket_enabled,      nil

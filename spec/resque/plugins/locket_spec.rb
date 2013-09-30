@@ -216,13 +216,15 @@ describe Resque::Plugins::Locket do
             Resque.redis.exists("locket:job_locks:#{payload.to_s}").should be_false
           end
 
-          it "deletes the lock key if the job explodes" do
-            Resque.redis.setex "locket:job_locks:#{payload.to_s}", 35, ""
+          it "deletes the lock key and lock counter if the job explodes" do
+            Resque.redis.setex("locket:job_locks:#{payload.to_s}", 35, "")
+            Resque.redis.hset("locket:queue_lock_counters", job.queue, 1)
 
             worker.run_hook :after_fork, job
             job.failure_hooks.each { |hook| job.payload_class.send(hook, job.args || []) }
 
             Resque.redis.exists("locket:job_locks:#{payload.to_s}").should be_false
+            Resque.redis.exists("locket:queue_lock_counters").should be_false
           end
         end
 
@@ -237,8 +239,6 @@ describe Resque::Plugins::Locket do
           end
 
           it "requeues a job if it cannot obtain a look for it" do
-            Resque.should_receive(:enqueue).with(job.payload_class, job.args).and_call_original
-
             worker.run_hook :after_fork, job
 
             last_payload = Resque.decode(Resque.redis.rpop("queue:#{job.queue}"))
