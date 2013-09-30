@@ -95,12 +95,12 @@ module Resque
 
       def requeue_job(job)
         attach_before_perform_exception(job)
-        Resque.enqueue(job.payload_class, job.args)
+        job.recreate
         increment_queue_lock(job)
       end
 
       def increment_queue_lock(job)
-        redis.hincrby "locket:queue_lock_counters", job.queue, 1
+        redis.hincrby("locket:queue_lock_counters", job.queue, 1)
       end
 
       def attach_before_perform_exception(job)
@@ -119,7 +119,7 @@ module Resque
 
       def retain_job_lock(job)
         validate_timing
-        redis.del "locket:queue_lock_counters"
+        destroy_queue_lock_counters
         spawn_heartbeat_thread(job)
         attach_job_expirations(job)
       end
@@ -139,7 +139,12 @@ module Resque
         job.payload_class.singleton_class.class_eval do
           # TODO : should we use around_perform with begin/ensure/end so we expire this on failure?
           define_method(:after_perform_remove_lock) { |*args| Resque.redis.del(lock_key) }
-          define_method(:on_failure_remove_lock) { |*args| Resque.redis.del(lock_key) }
+          define_method(:on_failure_remove_lock) do |*args|
+            Resque.redis.del(lock_key)
+            # when a job dies, we can no longer trust the queue lock counter, as it is otherwise
+            # only reset when we pull a job off of the queue or when all queues are locked
+            Resque.redis.del("locket:queue_lock_counters")
+          end
         end
       end
 
@@ -147,6 +152,10 @@ module Resque
         if job_lock_duration < heartbeat_frequency
           raise "A job's heartbeat must be more frequent than its lock expiration."
         end
+      end
+
+      def destroy_queue_lock_counters
+        redis.del("locket:queue_lock_counters")
       end
 
       # INDIVIDUAL JOB LOCK CONVENIENCES --------------------------------------------------------------------
