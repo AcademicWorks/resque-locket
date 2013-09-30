@@ -215,6 +215,15 @@ describe Resque::Plugins::Locket do
 
             Resque.redis.exists("locket:job_locks:#{payload.to_s}").should be_false
           end
+
+          it "deletes the lock key if the job explodes" do
+            Resque.redis.setex "locket:job_locks:#{payload.to_s}", 35, ""
+
+            worker.run_hook :after_fork, job
+            job.failure_hooks.each { |hook| job.payload_class.send(hook, job.args || []) }
+
+            Resque.redis.exists("locket:job_locks:#{payload.to_s}").should be_false
+          end
         end
 
         context "with a locked job" do

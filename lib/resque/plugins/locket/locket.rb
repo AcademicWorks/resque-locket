@@ -121,7 +121,7 @@ module Resque
         validate_timing
         redis.del "locket:queue_lock_counters"
         spawn_heartbeat_thread(job)
-        attach_after_perform_expiration(job)
+        attach_job_expirations(job)
       end
 
       def spawn_heartbeat_thread(job)
@@ -133,14 +133,13 @@ module Resque
         end
       end
 
-      def attach_after_perform_expiration(job)
+      def attach_job_expirations(job)
         lock_key = job_lock_key(job)
 
         job.payload_class.singleton_class.class_eval do
           # TODO : should we use around_perform with begin/ensure/end so we expire this on failure?
-          define_method(:after_perform_remove_lock) do |*args|
-            Resque.redis.del(lock_key)
-          end
+          define_method(:after_perform_remove_lock) { |*args| Resque.redis.del(lock_key) }
+          define_method(:on_failure_remove_lock) { |*args| Resque.redis.del(lock_key) }
         end
       end
 
