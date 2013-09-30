@@ -35,14 +35,6 @@ describe Resque::Plugins::Locket do
         Resque.locketed_queue?("5").should be_false
       end
     end
-
-    context "#reserve" do
-      it "does nothing" do
-        Resque.should_not_receive(:queue_unreservable?)
-
-        Resque::Worker.new("*").reserve
-      end
-    end
   end
 
   context "enabled" do
@@ -88,17 +80,14 @@ describe Resque::Plugins::Locket do
     end
 
     context "#locketed_queues" do
-
       it "accepts a list of queues that should be locked" do
         locked_queues = %w(1 2 3)
         Resque.locketed_queues = locked_queues
         Resque.locketed_queues.should eq locked_queues
       end
-
     end
 
     context "#locketed_queue?" do
-
       it "returns true if locketed_queues were not set" do
         Resque.locketed_queue?("5").should be_true
       end
@@ -112,11 +101,9 @@ describe Resque::Plugins::Locket do
         Resque.locketed_queues = %w(1 2 3)
         Resque.locketed_queue?("5").should be_false
       end
-
     end
 
     context "#remove_queue" do
-
       it "removes the queue" do
         Resque.remove_queue(all_queues.first)
 
@@ -130,50 +117,9 @@ describe Resque::Plugins::Locket do
 
         Resque.redis.hexists("locket:queue_lock_counters", all_queues.first).should be_false
       end
-
-    end
-
-    context "#reserve" do
-      it "does not ask for the queue size if we have not locked any jobs" do
-        Resque.enqueue_to(all_queues[0], GoodJob, "stuffs")
-
-        Resque.redis.should_receive(:hget).and_call_original
-        Resque.should_not_receive(:size)
-
-        Resque::Worker.new(all_queues[0]).reserve
-      end
-
-      it "reserves a job from the first queue if none are locked" do
-        Resque.enqueue_to(all_queues[0], GoodJob, "stuffs")
-
-        worker = Resque::Worker.new(all_queues[0])
-        job    = worker.reserve
-
-        job.should be_instance_of(Resque::Job)
-        job.args.should eq ["stuffs"]
-      end
-
-      it "does not reserve a job from a queue that is locked" do
-        Resque.enqueue_to(all_queues[0], GoodJob, "stuffs")
-        Resque.enqueue_to(all_queues[0], GoodJob, "more_stuffs")
-        Resque.enqueue_to(all_queues[1], GoodJob, "winner!")
-
-        worker_1 = Resque::Worker.new(all_queues[0])
-        worker_2 = Resque::Worker.new(all_queues[0], all_queues[1])
-
-        Resque.redis.hset "locket:queue_lock_counters", all_queues[0], 2
-
-        worker_1_job = worker_1.reserve
-        worker_2_job = worker_2.reserve
-
-        worker_1_job.should be_nil
-        worker_2_job.should be_instance_of(Resque::Job)
-        worker_2_job.args.should eq ["winner!"]
-      end
     end
 
     context "#locket!" do
-
       it "only registers a single after_fork hook" do
         Resque.locket!
         Resque.locket!
@@ -187,7 +133,6 @@ describe Resque::Plugins::Locket do
 
         job.after_hooks.length.should be 1
       end
-
     end
 
     context "#after_fork" do
