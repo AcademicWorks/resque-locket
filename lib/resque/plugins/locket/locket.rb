@@ -138,11 +138,13 @@ module Resque
 
         job.payload_class.singleton_class.class_eval do
           # TODO : should we use around_perform with begin/ensure/end so we expire this on failure?
-          define_method(:after_perform_remove_lock) { |*args| Resque.redis.del(lock_key) }
+          define_method(:after_perform_remove_lock) do |*args|
+            Resque.redis.del(lock_key)
+            Resque.redis.del("locket:queue_lock_counters")
+          end
+
           define_method(:on_failure_remove_lock) do |*args|
             Resque.redis.del(lock_key)
-            # when a job dies, we can no longer trust the queue lock counter, as it is otherwise
-            # only reset when we pull a job off of the queue or when all queues are locked
             Resque.redis.del("locket:queue_lock_counters")
           end
         end

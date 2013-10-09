@@ -207,20 +207,20 @@ describe Resque::Plugins::Locket do
             sleep(0.025)
           end
 
-          it "deletes the lock key after the job completes" do
-            Resque.redis.setex "locket:job_locks:#{payload.to_s}", 35, ""
+          it "deletes the lock key and lock counter after the job completes" do
+            Resque.redis.setex("locket:job_locks:#{payload.to_s}", 35, "")
+            Resque.redis.hset("locket:queue_lock_counters", job.queue, 1)
 
-            worker.run_hook :after_fork, job
             job.after_hooks.each { |hook| job.payload_class.send(hook, job.args || []) }
 
             Resque.redis.exists("locket:job_locks:#{payload.to_s}").should be_false
+            Resque.redis.exists("locket:queue_lock_counters").should be_false
           end
 
           it "deletes the lock key and lock counter if the job explodes" do
             Resque.redis.setex("locket:job_locks:#{payload.to_s}", 35, "")
             Resque.redis.hset("locket:queue_lock_counters", job.queue, 1)
 
-            worker.run_hook :after_fork, job
             job.failure_hooks.each { |hook| job.payload_class.send(hook, job.args || []) }
 
             Resque.redis.exists("locket:job_locks:#{payload.to_s}").should be_false
