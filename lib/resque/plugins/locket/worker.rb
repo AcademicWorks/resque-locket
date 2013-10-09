@@ -7,6 +7,9 @@ module Resque
           receiver.class_eval do
             alias queues_without_lock queues
             alias queues queues_with_lock
+
+            alias reserve_and_clear_without_counter reserve
+            alias reserve reserve_and_clear_counter
           end
         end
 
@@ -16,6 +19,16 @@ module Resque
           return queues_without_lock unless Resque.locket_enabled?
 
           queues_without_lock - locked_queues
+        end
+
+        def reserve_and_clear_counter
+          return reserve_and_clear_without_counter unless Resque.locket_enabled?
+
+          job = reserve_and_clear_without_counter
+
+          redis.del("locket:queue_lock_counters") if job == nil
+
+          job
         end
 
       private

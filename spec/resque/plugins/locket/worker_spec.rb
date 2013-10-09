@@ -3,6 +3,7 @@ require "spec_helper.rb"
 describe Resque::Plugins::Locket::Worker do
 
   let(:all_queues) { %w(1 2) }
+  let(:worker){ Resque::Worker.new("*") }
 
   before(:all) { class GoodJob; def self.perform; end; end }
   before(:each){ all_queues.map { |queue| Resque.watch_queue(queue) }}
@@ -16,9 +17,24 @@ describe Resque::Plugins::Locket::Worker do
     Resque.after_fork = nil
   }
 
-  describe "#queues" do
+  describe "#reserve" do
 
-    let(:worker){ Resque::Worker.new("*") }
+    context "enabled" do
+      before(:each) { Resque.locket! }
+
+      it "clears the lock counter if no job can be reserved" do
+        Resque.redis.hset("locket:queue_lock_counters", all_queues.first, 1)
+
+        worker.stub(:queues).and_return([])
+        worker.reserve
+
+        Resque.redis.exists("locket:queue_lock_counters").should be_false
+      end
+    end
+
+  end
+
+  describe "#queues" do
 
     context "disabled" do
       it "returns all known queues immediately" do
