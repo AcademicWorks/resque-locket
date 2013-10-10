@@ -19,7 +19,7 @@ Easy enough. All queues will be guaranteed unique across workers, locks will exp
 
 At a high level, before processing a job, Locket will attempt to obtain a **job lock** for said job. If it *can* obtain a lock, it will spawn a child thread that continually extends the lock while the job is being processed. If it *can't* obtain a lock, it will requeue the job and increment a **queue lock counter** to determine if all jobs in that queue are locked. If they are, that queue will be temporarily removed from the worker's queues list.
 
-So a lock is implemented at both the job level and the queue level—if a job is being processed, it is locked. If all jobs in a queue are being processed, the queue is locked. But both are kicked off with whether or not the job is locked.
+So a lock is implemented at both the job level and the queue level—if a job is being processed, it is locked. If all jobs in a queue are being processed, the queue is locked. But whether a job is locked is the starting point for both types of lock.
 
 #### When A Job is Not Locked
 
