@@ -63,6 +63,12 @@ describe Resque::Plugins::Locket do
         Resque.job_lock_duration.should be 30
       end
 
+      it "doesn't allow a non-integer or <= 0 duration" do
+        Resque.job_lock_duration.should_not be_nil
+        expect { Resque.job_lock_duration = "fun!" }.to raise_exception
+        expect { Resque.job_lock_duration = -1 }.to raise_exception
+      end
+
       it "validates a job lock expiration is set" do
         expect { Resque.job_lock_duration = 0 }.to raise_exception
         expect { Resque.job_lock_duration = 4.3 }.to raise_exception

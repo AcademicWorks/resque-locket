@@ -42,7 +42,7 @@ module Resque
 
       # Adjust how often the job will call to redis to extend the job lock.
       def heartbeat_frequency=(seconds)
-        if seconds == 0
+        if seconds <= 0
           raise ArgumentError, "The heartbeat frequency cannot be 0 seconds"
         end
 
@@ -56,7 +56,7 @@ module Resque
       # Adjust how long the duration of the lock will be set to. The heartbeat should
       # refresh the lock at a rate faster than its expiration.
       def job_lock_duration=(seconds)
-        if seconds == 0 || !seconds.is_a?(Integer)
+        if !seconds.is_a?(Integer) || seconds <= 0
           raise ArgumentError, "The job lock duration must be an integer greater than 0"
         end
 
