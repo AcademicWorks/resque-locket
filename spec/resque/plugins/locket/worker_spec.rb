@@ -30,6 +30,16 @@ describe Resque::Plugins::Locket::Worker do
 
         Resque.redis.exists("locket:queue_lock_counters").should be_false
       end
+
+      it "doesn't clear the lock counter if a job was reserved" do
+        Resque.redis.hset("locket:queue_lock_counters", all_queues.first, 1)
+        fake_job = Resque::Job.new(:jobs, "class" => "GoodJob", "args" => "stuffs")
+
+        Resque.stub(:reserve).and_return(fake_job)
+        worker.reserve
+
+        Resque.redis.exists("locket:queue_lock_counters").should be_true
+      end
     end
 
   end

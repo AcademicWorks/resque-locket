@@ -26,7 +26,7 @@ module Resque
 
           job = reserve_and_clear_without_counter
 
-          redis.del("locket:queue_lock_counters") if job == nil
+          redis.del("locket:queue_lock_counters") if job.nil?
 
           job
         end
